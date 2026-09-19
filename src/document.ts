@@ -2,7 +2,7 @@
 // its derived Y-up render grid. Editing tools mutate `grid` and call
 // `commit()`; saving converts the grid back to a .vox byte buffer.
 
-import { writeVox, type VoxModel } from "@voxolith/render/vox";
+import { writeVox, type VoxModel } from "@voxolith/renderer/vox";
 import { toViewModel, type ViewModel } from "./model";
 
 export interface EditorDocument {

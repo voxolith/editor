@@ -1,4 +1,4 @@
-// Voxolith Editor — a browser voxel editor on @voxolith/render (WebGPU).
+// Voxolith Editor — a browser voxel editor on @voxolith/renderer (WebGPU).
 //
 // This is the scaffold: open or drop a .vox, orbit with drag, zoom with the
 // wheel, pick a palette colour, and save the model back to .vox. Editing tools
@@ -21,7 +21,7 @@ import {
   packMaterials,
   type VoxScene,
   type Vec3,
-} from "@voxolith/render";
+} from "@voxolith/renderer";
 import { makeOrbitView } from "./orbitView";
 import { framing } from "./model";
 import { openDocument, downloadVox, type EditorDocument } from "./document";
@@ -72,7 +72,7 @@ async function main() {
 
   hud.innerHTML = `
     <div class="panel ed-toolbar">
-      <div class="ed-title">${APP} <small>· @voxolith/render</small></div>
+      <div class="ed-title">${APP} <small>· @voxolith/renderer</small></div>
       <button class="ed-btn" id="ed-open">Open .vox</button>
       <input type="file" id="ed-file" accept=".vox" hidden />
     </div>

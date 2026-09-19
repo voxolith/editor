@@ -1,6 +1,6 @@
 # Voxolith Editor
 
-A browser voxel editor built on [`@voxolith/render`](https://github.com/voxolith/render) (WebGPU).
+A browser voxel editor built on [`@voxolith/renderer`](https://github.com/voxolith/renderer) (WebGPU).
 
 This is the scaffold. It already does the plumbing an editor needs:
 
@@ -60,7 +60,7 @@ and its Y-up render grid and converts back to `.vox` bytes on save.
 
 ## Local development with the engine
 
-This repo depends on `@voxolith/render` as `workspace:*`. Clone it next to this one and run
+This repo depends on `@voxolith/renderer` as `workspace:*`. Clone it next to this one and run
 `bun install` from a workspace root that lists both folders. Once the engine is on npm, swap the
 dependency to a version range.
 

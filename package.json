@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "A browser voxel editor built on @voxolith/render (WebGPU)",
+  "description": "A browser voxel editor built on @voxolith/renderer (WebGPU)",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@voxolith/render": "workspace:*"
+    "@voxolith/renderer": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

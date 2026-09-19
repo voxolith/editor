@@ -3,7 +3,7 @@
 // registry starts empty: this scaffold ships the viewing, loading and saving
 // plumbing, and tools (paint, erase, fill, select, ...) plug in here.
 
-import type { Vec3 } from "@voxolith/render";
+import type { Vec3 } from "@voxolith/renderer";
 import type { EditorDocument } from "../document";
 
 /** A ray in grid space, plus the voxel it hits (if any) and the face normal. */
