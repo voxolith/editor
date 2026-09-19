@@ -163,7 +163,7 @@ body {
 
 .ed-tools {
   position: absolute;
-  top: 56px;
+  top: 132px; /* below the info panel */
   right: 12px;
   width: 240px;
   background: var(--surface);
