@@ -291,7 +291,7 @@ async function main() {
   requestAnimationFrame(loop);
 
   // Start with the bundled sample so the canvas isn't blank.
-  const res = await fetch("/models/cat-sit.vox");
+  const res = await fetch(`${import.meta.env.BASE_URL}models/cat-sit.vox`);
   if (res.ok) await loadBuffer(await res.arrayBuffer(), "cat-sit.vox");
 }
 
