@@ -14,6 +14,10 @@ import {
   type Renderer,
   makeCamera,
   makePerf,
+  makeFrameLoop,
+  observeResize,
+  QUALITY_PRESETS,
+  type QualityPreset,
   makeRay,
   OccupancyGrid,
   parseVoxScene,
@@ -31,6 +35,17 @@ import { initTheme } from "./brand/theme";
 
 const BASE = import.meta.env.BASE_URL;
 const MARK = `<img src="${BASE}brand/logo-mark.svg" alt="" width="72" height="72">`;
+
+const QUALITY_KEY = "voxolith-quality";
+const isPreset = (v: unknown): v is QualityPreset => v === "low" || v === "medium" || v === "high";
+function storedQuality(fallback: QualityPreset): QualityPreset {
+  try {
+    const v = localStorage.getItem(QUALITY_KEY);
+    return isPreset(v) ? v : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 const APP = "Voxolith Editor";
 
@@ -68,6 +83,7 @@ async function main() {
   let gpu;
   try {
     gpu = await initGpu(canvas);
+    if (gpu.software) gpu.pixelRatio = 1; // CPU adapter: render at 1× CSS pixels
   } catch (err) {
     if (err instanceof WebGPUUnsupportedError) {
       showUnsupportedScreen(err.message, { appName: APP, iconHtml: MARK });
@@ -81,6 +97,11 @@ async function main() {
       <a class="brand" href="https://github.com/voxolith" target="_blank" rel="noopener"><img src="${BASE}brand/logo-mark.svg" alt=""> voxolith <small>Editor</small></a>
       <button class="ed-btn" id="ed-open">Open .vox</button>
       <input type="file" id="ed-file" accept=".vox" hidden />
+      <select class="ed-select" id="ed-quality" title="Render quality">
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
       <button class="theme-toggle" id="ed-theme" type="button"></button>
     </div>
     <div class="panel ed-info" id="ed-info" hidden></div>
@@ -95,7 +116,10 @@ async function main() {
   const fileInput = hud.querySelector("#ed-file") as HTMLInputElement;
   const toolsHost = hud.querySelector("#ed-tools") as HTMLElement;
 
-  const orbit = makeOrbitView(canvas, { yaw: 35, pitch: 28, distance: 120, minDistance: 6, maxDistance: 1400 });
+  const orbit = makeOrbitView(canvas, {
+    yaw: 35, pitch: 28, distance: 120, minDistance: 6, maxDistance: 1400,
+    onChange: () => loop.invalidate(),
+  });
   const camera = makeCamera({ target: [0, 0, 0], distance: 120, pitchDeg: 30, fovDeg: 32 });
 
   let renderer: Renderer | null = null;
@@ -103,6 +127,18 @@ async function main() {
   let doc: EditorDocument | null = null;
   let activeToolId: string | null = null;
   let color = 1;
+
+  // Render quality (engine presets), shared with the viewer via localStorage.
+  let quality: QualityPreset = storedQuality(gpu.software ? "low" : "high");
+  const qualityEl = hud.querySelector("#ed-quality") as HTMLSelectElement;
+  qualityEl.value = quality;
+  const applyQuality = (r: Renderer) => r.setQuality(QUALITY_PRESETS[quality]);
+  qualityEl.addEventListener("change", () => {
+    if (isPreset(qualityEl.value)) quality = qualityEl.value;
+    try { localStorage.setItem(QUALITY_KEY, quality); } catch { /* ignore */ }
+    if (renderer) applyQuality(renderer);
+    loop.invalidate();
+  });
 
   // --- Tools panel ----------------------------------------------------------
   const panel = makeToolsPanel(toolsHost, {
@@ -156,7 +192,9 @@ async function main() {
     const r = await createRenderer(gpu!, { size: g.size, data: g.data, palette: g.palette });
     r.setFloor(FLOOR);
     r.updateCoarse(new OccupancyGrid(g.size, g.data).data);
+    applyQuality(r);
     renderer = r;
+    loop.invalidate();
 
     const f = framing(g.size);
     target = f.target;
@@ -184,7 +222,9 @@ async function main() {
     });
     r.setFloor(FLOOR);
     r.updateCoarse(new OccupancyGrid(anim.size, anim.frame(0)).data);
+    applyQuality(r);
     renderer = r;
+    loop.invalidate();
     const f = framing(anim.size);
     target = f.target;
     orbit.setDistance(f.distance);
@@ -261,6 +301,7 @@ async function main() {
             renderer!.updateVoxels(doc!.grid.data);
             doc!.dirty = true;
             refreshInfo();
+            loop.invalidate();
           },
         }
       : null;
@@ -283,20 +324,26 @@ async function main() {
   });
 
   // --- Render loop ----------------------------------------------------------
-  const perf = makePerf({ enabled: new URLSearchParams(location.search).has("perf"), scale: gpu.renderScale });
-  let last = performance.now();
-  function loop(now: number) {
-    requestAnimationFrame(loop);
-    if (now - last < 1000 / 60 - 1) return;
-    last = now;
-    perf.frame(now);
-    gpu!.renderScale = perf.scale();
-    resizeToDisplay(gpu!);
-    if (renderer) {
-      renderer.render({ ...camera(orbit.yaw(), orbit.distance(), target, orbit.pitch()), ...ENV });
-    }
-  }
-  requestAnimationFrame(loop);
+  const a = gpu.adapterInfo;
+  const perf = makePerf({
+    enabled: new URLSearchParams(location.search).has("perf"),
+    scale: gpu.renderScale,
+    minScale: gpu.software ? 0.25 : 0.35,
+    label: [a.vendor, a.architecture, a.description].filter(Boolean).join(" · ") + (gpu.software ? " (software)" : ""),
+  });
+  // Render on demand: redraw only when the camera, document, quality or viewport changes.
+  const loop = makeFrameLoop({
+    render(now) {
+      perf.frame(now);
+      gpu!.renderScale = perf.scale();
+      resizeToDisplay(gpu!);
+      if (renderer) {
+        renderer.render({ ...camera(orbit.yaw(), orbit.distance(), target, orbit.pitch()), ...ENV });
+      }
+    },
+  });
+  observeResize(canvas, loop);
+  loop.invalidate();
 
   // Start with the bundled sample so the canvas isn't blank.
   const res = await fetch(`${BASE}models/cat-sit.vox`);

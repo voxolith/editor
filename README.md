@@ -17,6 +17,7 @@ This is the scaffold. It already does the plumbing an editor needs:
 - **Save .vox** writes the current grid back to a MagicaVoxel file
 - A tool registry (`src/tools`) that routes canvas pointer and keyboard events to the active tool
 - Multi-model or animated `.vox` scenes open read-only
+- Render on demand with a quality dropdown (engine presets, shared with the viewer)
 
 Planned scope: paint / erase / fill tools with voxel hit testing, palette editing, model resizing,
 multi-model scenes, undo/redo, and Minecraft region import.
