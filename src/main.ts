@@ -27,6 +27,10 @@ import { framing } from "./model";
 import { openDocument, downloadVox, type EditorDocument } from "./document";
 import { TOOLS, type EditorContext, type PointerHit } from "./tools";
 import { makeToolsPanel } from "./ui/panel";
+import { initTheme } from "./brand/theme";
+
+const BASE = import.meta.env.BASE_URL;
+const MARK = `<img src="${BASE}brand/logo-mark.svg" alt="" width="72" height="72">`;
 
 const APP = "Voxolith Editor";
 
@@ -58,13 +62,15 @@ async function main() {
   const canvas = document.getElementById("scene") as HTMLCanvasElement | null;
   const hud = document.getElementById("hud");
   if (!canvas || !hud) throw new Error("Missing #scene / #hud");
+  // Apply ?theme= / the stored theme now so even the unsupported card is themed.
+  initTheme();
 
   let gpu;
   try {
     gpu = await initGpu(canvas);
   } catch (err) {
     if (err instanceof WebGPUUnsupportedError) {
-      showUnsupportedScreen(err.message, { appName: APP, emoji: "🧊" });
+      showUnsupportedScreen(err.message, { appName: APP, iconHtml: MARK });
       return;
     }
     throw err;
@@ -72,15 +78,17 @@ async function main() {
 
   hud.innerHTML = `
     <div class="panel ed-toolbar">
-      <div class="ed-title">${APP} <small>· @voxolith/renderer</small></div>
+      <a class="brand" href="https://github.com/voxolith" target="_blank" rel="noopener"><img src="${BASE}brand/logo-mark.svg" alt=""> voxolith <small>Editor</small></a>
       <button class="ed-btn" id="ed-open">Open .vox</button>
       <input type="file" id="ed-file" accept=".vox" hidden />
+      <button class="theme-toggle" id="ed-theme" type="button"></button>
     </div>
     <div class="panel ed-info" id="ed-info" hidden></div>
     <aside id="ed-tools"></aside>
     <div class="panel ed-palette" id="ed-palette" hidden></div>
     <div class="ed-hint" id="ed-hint"><div>Drop a <b>.vox</b> file here<br>or use <b>Open</b></div></div>`;
 
+  initTheme(hud.querySelector("#ed-theme"));
   const infoEl = hud.querySelector("#ed-info") as HTMLElement;
   const paletteEl = hud.querySelector("#ed-palette") as HTMLElement;
   const hintEl = hud.querySelector("#ed-hint") as HTMLElement;
@@ -193,7 +201,7 @@ async function main() {
 
   function showError(msg: string) {
     infoEl.hidden = false;
-    infoEl.innerHTML = `<div class="name" style="color:#ff8d8d">Failed to load</div><div class="row"><span>${msg}</span></div>`;
+    infoEl.innerHTML = `<div class="name" style="color:var(--danger)">Failed to load</div><div class="row"><span>${msg}</span></div>`;
   }
 
   const IDENTITY9 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
@@ -291,11 +299,11 @@ async function main() {
   requestAnimationFrame(loop);
 
   // Start with the bundled sample so the canvas isn't blank.
-  const res = await fetch(`${import.meta.env.BASE_URL}models/cat-sit.vox`);
+  const res = await fetch(`${BASE}models/cat-sit.vox`);
   if (res.ok) await loadBuffer(await res.arrayBuffer(), "cat-sit.vox");
 }
 
 main().catch((err) => {
   console.error(err);
-  showUnsupportedScreen("An unexpected error occurred while starting up.", { appName: APP, emoji: "🧊" });
+  showUnsupportedScreen("An unexpected error occurred while starting up.", { appName: APP, iconHtml: MARK });
 });
