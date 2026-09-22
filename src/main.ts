@@ -193,6 +193,7 @@ async function main() {
     r.setFloor(FLOOR);
     r.updateCoarse(new OccupancyGrid(g.size, g.data).data);
     applyQuality(r);
+    renderer?.destroy(); // the grid size changes per load, so this is a new renderer
     renderer = r;
     loop.invalidate();
 
@@ -223,6 +224,7 @@ async function main() {
     r.setFloor(FLOOR);
     r.updateCoarse(new OccupancyGrid(anim.size, anim.frame(0)).data);
     applyQuality(r);
+    renderer?.destroy(); // the grid size changes per load, so this is a new renderer
     renderer = r;
     loop.invalidate();
     const f = framing(anim.size);
