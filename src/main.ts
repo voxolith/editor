@@ -26,7 +26,7 @@ import {
   type VoxScene,
   type Vec3,
 } from "@voxolith/renderer";
-import { makeOrbitView } from "./orbitView";
+import { createInput, makeOrbitController, prepareSurface } from "@voxolith/engine/input";
 import { framing } from "./model";
 import { openDocument, downloadVox, type EditorDocument } from "./document";
 import { TOOLS, type EditorContext, type PointerHit } from "./tools";
@@ -116,9 +116,12 @@ async function main() {
   const fileInput = hud.querySelector("#ed-file") as HTMLInputElement;
   const toolsHost = hud.querySelector("#ed-tools") as HTMLElement;
 
-  const orbit = makeOrbitView(canvas, {
-    yaw: 35, pitch: 28, distance: 120, minDistance: 6, maxDistance: 1400,
-    onChange: () => loop.invalidate(),
+  // Drag to orbit, wheel or pinch (touch, trackpad) to zoom. Every input
+  // event requests a frame.
+  prepareSurface(canvas);
+  const input = createInput(canvas, { loop: { invalidate: () => loop.invalidate() } });
+  const orbit = makeOrbitController(input, {
+    yaw: 35, pitch: 28, pitchLimits: [3, 87], distance: 120, distanceLimits: [6, 1400], sensitivity: 0.4, fovDeg: 32,
   });
   const camera = makeCamera({ target: [0, 0, 0], distance: 120, pitchDeg: 30, fovDeg: 32 });
 
@@ -199,7 +202,7 @@ async function main() {
 
     const f = framing(g.size);
     target = f.target;
-    orbit.setDistance(f.distance);
+    orbit.set({ distance: f.distance });
 
     color = g.usedColors[0]?.index ?? 1;
     infoEl.hidden = false;
@@ -229,7 +232,7 @@ async function main() {
     loop.invalidate();
     const f = framing(anim.size);
     target = f.target;
-    orbit.setDistance(f.distance);
+    orbit.set({ distance: f.distance });
     infoEl.hidden = false;
     paletteEl.hidden = true;
     hintEl.hidden = true;
@@ -289,7 +292,7 @@ async function main() {
   // Builds a grid-space ray from a pointer event. Hit testing against voxels is
   // left to tools (a DDA walk over doc.grid.data); the scaffold only supplies
   // the ray.
-  function pointerHit(e: PointerEvent): PointerHit {
+  function pointerHit(e: { clientX: number; clientY: number }): PointerHit {
     const frame = camera(orbit.yaw(), orbit.distance(), target, orbit.pitch());
     const ray = makeRay(canvas!, frame, e.clientX, e.clientY);
     return { origin: ray.origin, dir: ray.dir, cell: null, normal: null };
@@ -308,22 +311,26 @@ async function main() {
         }
       : null;
   const activeTool = () => TOOLS.find((t) => t.id === activeToolId) ?? null;
-  canvas.addEventListener("pointerdown", (e) => {
+  // An active tool gets the primary button first and claims the pointer, so
+  // the orbit controller leaves it alone; right/middle drags and touch pinches
+  // still move the camera.
+  const toolOwner = {};
+  input.on((e) => {
     const t = activeTool(), c = ctx();
-    if (t?.onPointerDown && c) t.onPointerDown(pointerHit(e), c, e);
-  });
-  canvas.addEventListener("pointermove", (e) => {
-    const t = activeTool(), c = ctx();
-    if (t?.onPointerMove && c) t.onPointerMove(pointerHit(e), c, e);
-  });
-  canvas.addEventListener("pointerup", (e) => {
-    const t = activeTool(), c = ctx();
-    if (t?.onPointerUp && c) t.onPointerUp(pointerHit(e), c, e);
-  });
-  window.addEventListener("keydown", (e) => {
-    const t = activeTool(), c = ctx();
-    if (t?.onKey && c) t.onKey(e, c);
-  });
+    if (e.kind === "key") {
+      if (e.phase === "down" && t?.onKey && c) t.onKey(e.source as KeyboardEvent, c);
+      return;
+    }
+    if (e.kind !== "pointer" || !t || !c) return;
+    const src = e.source as PointerEvent;
+    if (e.phase === "down") {
+      if (e.pointer.button !== 0 || !input.claim(e.pointer.id, toolOwner)) return;
+      t.onPointerDown?.(pointerHit(src), c, src);
+    } else if (input.claimedBy(e.pointer.id) === toolOwner) {
+      if (e.phase === "move") t.onPointerMove?.(pointerHit(src), c, src);
+      else t.onPointerUp?.(pointerHit(src), c, src);
+    }
+  }, 10);
 
   // --- Render loop ----------------------------------------------------------
   const a = gpu.adapterInfo;
