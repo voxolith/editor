@@ -27,6 +27,7 @@ import {
   type Vec3,
 } from "@voxolith/renderer";
 import { createInput, makeOrbitController, prepareSurface } from "@voxolith/engine/input";
+import { registerServiceWorker } from "@voxolith/engine/pwa";
 import { framing } from "./model";
 import { openDocument, downloadVox, type EditorDocument } from "./document";
 import { TOOLS, type EditorContext, type PointerHit } from "./tools";
@@ -363,3 +364,7 @@ main().catch((err) => {
   console.error(err);
   showUnsupportedScreen("An unexpected error occurred while starting up.", { appName: APP, iconHtml: MARK });
 });
+
+// Offline after the first visit: the engine's shared worker (skipped in dev and on localhost).
+// A new deploy takes over quietly; the open document keeps running the old code until a reload.
+registerServiceWorker();
