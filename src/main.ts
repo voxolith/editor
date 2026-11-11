@@ -28,6 +28,7 @@ import {
 } from "@voxolith/renderer";
 import { createInput, makeOrbitController, prepareSurface } from "@voxolith/engine/input";
 import { registerServiceWorker } from "@voxolith/engine/pwa";
+import { classicSky, classicSkyParams } from "@voxolith/engine/atmosphere";
 import { framing } from "./model";
 import { openDocument, downloadVox, type EditorDocument } from "./document";
 import { TOOLS, type EditorContext, type PointerHit } from "./tools";
@@ -62,6 +63,10 @@ const ENV = {
   lightColor: [1.0, 0.98, 0.94] as Vec3,
   ambientSky: [0.5, 0.53, 0.6] as Vec3,
   ambientGround: [0.3, 0.29, 0.27] as Vec3,
+};
+// The backdrop: the engine's classic sky with no disc, stars or clouds (a calm dark gradient).
+// It never changes, so it is packed once and the same array goes to every frame.
+const SKY = classicSkyParams({
   sunDir: SUN,
   moonDir: [0, -1, 0] as Vec3,
   sunColor: [1, 0.96, 0.85] as Vec3,
@@ -71,7 +76,7 @@ const ENV = {
   nightFactor: 0,
   sunIntensity: 0,
   moonIntensity: 0,
-};
+});
 const FLOOR = { enabled: true, y: 0, colorA: [0.22, 0.23, 0.27] as Vec3, colorB: [0.17, 0.18, 0.21] as Vec3 };
 
 async function main() {
@@ -193,7 +198,7 @@ async function main() {
     const g = next.grid;
     // A fresh renderer per load (the grid size changes). The WESL shader links
     // once on the first call, then it's cached.
-    const r = await createRenderer(gpu!, { size: g.size, data: g.data, palette: g.palette });
+    const r = await createRenderer(gpu!, { size: g.size, data: g.data, palette: g.palette }, { background: classicSky });
     r.setFloor(FLOOR);
     r.updateCoarse(new OccupancyGrid(g.size, g.data).data);
     applyQuality(r);
@@ -224,7 +229,7 @@ async function main() {
       data: anim.frame(0),
       palette: anim.palette,
       materials: packMaterials(scene),
-    });
+    }, { background: classicSky });
     r.setFloor(FLOOR);
     r.updateCoarse(new OccupancyGrid(anim.size, anim.frame(0)).data);
     applyQuality(r);
@@ -348,7 +353,7 @@ async function main() {
       gpu!.renderScale = perf.scale();
       resizeToDisplay(gpu!);
       if (renderer) {
-        renderer.render({ ...camera(orbit.yaw(), orbit.distance(), target, orbit.pitch()), ...ENV });
+        renderer.render({ ...camera(orbit.yaw(), orbit.distance(), target, orbit.pitch()), ...ENV, background: SKY });
       }
     },
   });
