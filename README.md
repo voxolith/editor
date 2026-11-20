@@ -62,21 +62,25 @@ and its Y-up render grid and converts back to `.vox` bytes on save.
 | `src/main.ts` | boot, HUD, loading, tool event routing, render loop |
 | `src/document.ts` | editor document, `.vox` export |
 | `src/model.ts` | `.vox` model to render grid (crop, Z-up to Y-up) and framing |
-| `src/orbitView.ts` | drag/wheel turntable camera |
-| `src/tools/` | tool interface and registry |
+| `src/tools/index.ts` | tool interface and registry |
 | `src/ui/panel.ts` | tools panel with Save |
+| `src/styles.css` | app styles, on the brand tokens |
+| `src/brand/` | generated design tokens and theme toggle (see Theming) |
+
+The turntable camera is the engine's orbit controller (`makeOrbitController` from
+`@voxolith/engine/input`), wired in `src/main.ts`.
 
 ## Local development with the engine
 
-This repo depends on `@voxolith/renderer` as `workspace:*`. Clone it next to this one and run
-`bun install` from a workspace root that lists both folders. Once the engine is on npm, swap the
-dependency to a version range.
+This repo depends on `@voxolith/renderer` and `@voxolith/engine` as `workspace:*`. Clone both next
+to this one and run `bun install` from a workspace root that lists all three folders. Once they
+are on npm, swap the dependencies to version ranges.
 
 ## Deploy
 
 Every push to `main` builds the app and publishes it to GitHub Pages at
 <https://voxolith.github.io/editor/> via `.github/workflows/pages.yml`. The workflow checks out
-`voxolith/renderer` next to the app and builds with `BASE_PATH=/editor/`, so asset and fetch URLs
+`voxolith/renderer` and `voxolith/engine` next to the app and builds with `BASE_PATH=/editor/`, so asset and fetch URLs
 resolve under the project path. Run the same locally with `BASE_PATH=/editor/ bun run build`.
 
 ## Theming
